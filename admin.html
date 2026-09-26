@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>NŌMA — Admin</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="./supabase-client.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<style>
+:root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);
+  --bg:#F2EFE7;--bg-elev:#EAE5D9;--panel:#FFFDF9;--ink:#18150F;--ink-soft:#5E5A4E;--accent:#9C7A3C;--line:rgba(24,21,15,.14);
+  --new:#B0703A;--acc:#8A6FB0;--prep:#4C6B8A;--ready:#4C8A5D;--done:#8B8676;}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--bg:#131110;--bg-elev:#1A1815;--panel:#1D1A16;--ink:#F2EFE7;--ink-soft:#B6B0A0;--line:rgba(242,239,231,.14);}}
+*,*::before,*::after{box-sizing:inherit;margin:0;padding:0;}
+body{background:var(--bg-elev);font-family:'Manrope',sans-serif;color:var(--ink);min-height:100vh;padding-bottom:env(safe-area-inset-bottom,0px);}
+button,input,textarea,select{font-family:inherit;color:inherit;}
+button{cursor:pointer;background:none;border:none;}
+input,textarea,select{width:100%;}
+#app{display:flex;min-height:100vh;flex-direction:column;}
+.ic{width:18px;height:18px;display:block;}
+.sidebar{display:flex;flex-direction:row;overflow-x:auto;background:var(--panel);border-bottom:1px solid var(--line);align-items:center;padding:0 .5rem;position:sticky;top:0;z-index:5;}
+.brand{font-family:'Fraunces';font-weight:600;font-size:1.05rem;padding:.9rem 1rem;white-space:nowrap;}
+.brand span{color:var(--ink-soft);font-weight:400;font-size:.75rem;display:block;}
+.navitem{padding:.9rem .9rem;font-weight:700;font-size:.85rem;color:var(--ink-soft);white-space:nowrap;border-bottom:2px solid transparent;}
+.navitem.active{color:var(--ink);border-color:var(--accent);}
+@media(min-width:820px){#app{flex-direction:row;}.sidebar{flex-direction:column;width:230px;height:100vh;position:sticky;top:0;align-items:stretch;border-bottom:none;border-right:1px solid var(--line);overflow-x:visible;}
+ .brand{padding:1.6rem 1.4rem 1.2rem;}.navitem{text-align:left;padding:.75rem 1.4rem;border-bottom:none;border-left:2px solid transparent;}
+ .navitem.active{border-color:var(--accent);background:var(--bg-elev);}}
+main{flex:1;padding:1.25rem 1.25rem 2.5rem;max-width:1100px;}
+h1{font-family:'Fraunces';font-weight:600;font-size:1.4rem;}
+h2{font-family:'Fraunces';font-weight:600;font-size:1.05rem;}
+.head-row{display:flex;justify-content:space-between;align-items:center;gap:1rem;margin-bottom:1.1rem;flex-wrap:wrap;}
+.btn{font-weight:700;font-size:.85rem;padding:.65rem 1.1rem;border:1px solid var(--ink);}
+.btn-primary{background:var(--ink);color:var(--bg);}
+.btn-secondary{background:transparent;color:var(--ink);}
+.btn:disabled{opacity:.5;}
+.iconbtn{width:34px;height:34px;display:inline-flex;align-items:center;justify-content:center;border:1px solid var(--line);flex:0 0 auto;font-size:.85rem;}
+.iconbtn:disabled{opacity:.3;}
+.stats{display:grid;grid-template-columns:repeat(2,1fr);gap:.9rem;margin-bottom:1.6rem;}
+@media(min-width:600px){.stats{grid-template-columns:repeat(4,1fr);}}
+.stat{background:var(--panel);border:1px solid var(--line);padding:1.1rem;}
+.stat .num{font-family:'Fraunces';font-size:1.7rem;font-weight:600;}
+.stat .lbl{color:var(--ink-soft);font-size:.78rem;margin-top:.2rem;}
+.recent{background:var(--panel);border:1px solid var(--line);}
+.orow{display:flex;align-items:center;gap:.9rem;padding:.9rem 1.1rem;border-bottom:1px solid var(--line);cursor:pointer;}
+.orow:last-child{border-bottom:none;}
+.dot{width:9px;height:9px;border-radius:50%;flex:0 0 auto;}
+.orow .meta{flex:1;min-width:0;}
+.orow .meta b{font-size:.9rem;}
+.orow .meta span{display:block;color:var(--ink-soft);font-size:.78rem;margin-top:.1rem;}
+.orow .amt{font-weight:700;font-size:.9rem;}
+.board{display:flex;gap:1rem;overflow-x:auto;padding-bottom:1rem;align-items:flex-start;}
+.col{background:var(--panel);border:1px solid var(--line);width:260px;flex:0 0 260px;}
+.col-head{display:flex;align-items:center;gap:.5rem;padding:.9rem 1rem;border-bottom:1px solid var(--line);font-weight:700;font-size:.85rem;}
+.col-head .count{color:var(--ink-soft);font-weight:600;}
+.ocard{padding:.85rem 1rem;border-bottom:1px solid var(--line);}
+.ocard:last-child{border-bottom:none;}
+.ocard-top{display:flex;justify-content:space-between;font-size:.85rem;font-weight:700;cursor:pointer;}
+.ocard-items{color:var(--ink-soft);font-size:.78rem;margin-top:.4rem;line-height:1.4;cursor:pointer;}
+.ocard-foot{display:flex;justify-content:space-between;align-items:center;margin-top:.6rem;}
+.ocard-time{color:var(--ink-soft);font-size:.72rem;}
+.ocard .total{font-weight:700;font-size:.85rem;}
+.actbtn{margin-top:.6rem;width:100%;padding:.55rem;border:1px solid var(--ink);font-weight:700;font-size:.78rem;}
+.linkbtn{margin-top:.4rem;width:100%;padding:.35rem;font-size:.72rem;color:var(--ink-soft);text-decoration:underline;}
+.empty-col{padding:1.4rem 1rem;color:var(--ink-soft);font-size:.8rem;text-align:center;}
+.dhead{display:flex;align-items:center;gap:.8rem;margin-bottom:1.2rem;}
+.dcard{background:var(--panel);border:1px solid var(--line);padding:1.2rem;max-width:520px;}
+.drow{display:flex;justify-content:space-between;padding:.5rem 0;border-bottom:1px solid var(--line);font-size:.92rem;gap:1rem;}
+.drow:last-child{border-bottom:none;}
+.dnote{color:var(--ink-soft);font-size:.78rem;font-style:italic;}
+.panel-list{background:var(--panel);border:1px solid var(--line);}
+.group-label{padding:.7rem 1rem .3rem;font-size:.72rem;font-weight:700;color:var(--ink-soft);background:var(--bg-elev);}
+.prow{display:flex;align-items:center;gap:.7rem;padding:.75rem 1rem;border-bottom:1px solid var(--line);}
+.prow:last-child{border-bottom:none;}
+.prow.unavail{opacity:.5;}
+.swatch{width:34px;height:34px;background:linear-gradient(150deg,var(--ink),var(--accent));flex:0 0 auto;}
+.prow-body{flex:1;min-width:0;}
+.prow-body b{font-size:.87rem;display:block;}
+.prow-body span{color:var(--ink-soft);font-size:.76rem;}
+.tglbtn{font-size:.7rem;font-weight:700;padding:.3rem .6rem;border:1px solid var(--line);color:var(--ink-soft);white-space:nowrap;}
+.tablegrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:.9rem;}
+.tcard{background:var(--panel);border:1px solid var(--line);padding:1rem;}
+.tnum{font-family:'Fraunces';font-weight:600;font-size:1.15rem;}
+.tstatus{display:inline-block;margin-top:.25rem;font-size:.72rem;font-weight:700;color:var(--ready);}
+.tstatus.off{color:var(--ink-soft);}
+.tactions{margin-top:.8rem;display:flex;flex-direction:column;gap:.5rem;}
+.trow2{display:flex;gap:.5rem;}
+.trow2 .iconbtn{flex:1;}
+.modal-backdrop{position:fixed;inset:0;background:rgba(20,18,14,.5);display:flex;align-items:center;justify-content:center;z-index:60;padding:1.2rem;}
+.modal-panel{background:var(--panel);border:1px solid var(--line);padding:1.4rem;width:100%;max-width:420px;max-height:88vh;overflow-y:auto;}
+.mfield{display:flex;flex-direction:column;gap:.35rem;margin-bottom:.9rem;}
+.mfield label{font-weight:700;color:var(--ink-soft);font-size:.76rem;}
+.mfield input,.mfield textarea,.mfield select{padding:.65rem;border:1px solid var(--line);background:var(--bg-elev);font-size:.9rem;}
+.mfield textarea{min-height:60px;resize:vertical;}
+.mfield input[type=color]{padding:.25rem;height:42px;}
+.mrow{display:flex;gap:.8rem;}
+.mrow .mfield{flex:1;}
+.mcheck{display:flex;align-items:center;gap:.5rem;font-size:.85rem;margin-bottom:1rem;}
+.mcheck input{width:auto;}
+.mactions{display:flex;justify-content:space-between;gap:.8rem;margin-top:.4rem;}
+.qrlink{font-size:.72rem;color:var(--ink-soft);text-align:center;word-break:break-all;padding:0 .3rem;}
+.settings-card{max-width:560px;}
+.login-wrap{flex:1;display:flex;align-items:center;justify-content:center;padding:1.5rem;}
+.login-card{background:var(--panel);border:1px solid var(--line);padding:2rem;width:100%;max-width:360px;}
+.login-card h1{text-align:center;margin-bottom:1.4rem;}
+.errtext{color:#B0453A;font-size:.8rem;margin-top:-.4rem;margin-bottom:.8rem;min-height:1em;}
+.spinner{width:26px;height:26px;border:2px solid var(--line);border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite;margin:2rem auto;}
+@keyframes spin{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+<div id="app"><div class="spinner"></div></div>
+<div id="modal-root"></div>
+<script>
+const STATUS_META={new:{label:'Novo',color:'var(--new)',next:'accepted',nextLabel:'Aceitar'},
+ accepted:{label:'Aceite',color:'var(--acc)',next:'preparing',nextLabel:'Iniciar Preparação'},
+ preparing:{label:'Em Preparação',color:'var(--prep)',next:'ready',nextLabel:'Marcar como Pronto'},
+ ready:{label:'Pronto',color:'var(--ready)',next:'completed',nextLabel:'Concluir'},
+ completed:{label:'Concluído',color:'var(--done)',next:null,nextLabel:null},
+ cancelled:{label:'Cancelado',color:'#B0453A',next:null,nextLabel:null}};
+const BOARD_COLS=['new','accepted','preparing','ready'];
+
+let session=null, RESTAURANT=null, ORDERS=[], PRODUCTS=[], CATEGORIES=[], TABLES=[];
+let state={screen:'dashboard',detailId:null};
+let ordersSub=null;
+
+function icon(name){const p={back:'<line x1="19" y1="12" x2="5" y2="12"/><polyline points="11 6 5 12 11 18"/>'};
+ return `<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">${p[name]||''}</svg>`;}
+function fmt(n){return '€'+Number(n).toFixed(2).replace('.',',');}
+function val(id){return document.getElementById(id).value;}
+function toast(msg){const t=document.createElement('div');t.style.cssText='position:fixed;left:50%;bottom:1.5rem;transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:.7rem 1.2rem;font-size:.85rem;z-index:70;';t.textContent=msg;document.body.appendChild(t);setTimeout(()=>t.remove(),1600);}
+function openModal(html){document.getElementById('modal-root').innerHTML=`<div class="modal-backdrop" onclick="if(event.target===this)closeModal()"><div class="modal-panel">${html}</div></div>`;}
+function closeModal(){document.getElementById('modal-root').innerHTML='';}
+function go(screen,detailId){state.screen=screen;state.detailId=detailId||null;render();window.scrollTo(0,0);}
+function clientUrl(){return location.origin+location.pathname.replace(/admin\.html$/,'menu.html');}
+function orderTotal(o){return (o.order_items||[]).reduce((s,it)=>s+it.unit_price*it.quantity,0);}
+function itemsSummary(o){return (o.order_items||[]).map(it=>`${it.quantity}× ${it.product_name}`).join(' · ');}
+function fmtTime(ts){return new Date(ts).toLocaleTimeString('pt-PT',{hour:'2-digit',minute:'2-digit'});}
+function stats(){const pend=ORDERS.filter(o=>['new','accepted','preparing','ready'].includes(o.status)).length;
+ const done=ORDERS.filter(o=>o.status==='completed').length;
+ const valor=ORDERS.filter(o=>o.status==='completed').reduce((s,o)=>s+orderTotal(o),0);
+ return {total:ORDERS.length,pend,done,valor};}
+
+// ---------- auth ----------
+async function boot(){
+ session=await Noma.getSession();
+ Noma.onAuthChange(s=>{session=s;if(!s){RESTAURANT=null;if(ordersSub)ordersSub.unsubscribe();renderLogin();}});
+ if(!session){renderLogin();return;}
+ await afterLogin();
+}
+function renderLogin(){
+ document.getElementById('app').innerHTML=`<div class="login-wrap"><div class="login-card">
+   <h1>NŌMA · Admin</h1>
+   <div class="mfield"><label>Email</label><input id="loEmail" type="email"></div>
+   <div class="mfield"><label>Password</label><input id="loPass" type="password"></div>
+   <div class="errtext" id="loErr"></div>
+   <button class="btn btn-primary" style="width:100%" id="loBtn" onclick="doLogin()">Entrar</button></div></div>`;
+}
+async function doLogin(){
+ const btn=document.getElementById('loBtn');btn.disabled=true;btn.textContent='A entrar...';
+ try{
+  await Noma.signIn(val('loEmail'),val('loPass'));
+  session=await Noma.getSession();
+  await afterLogin();
+ }catch(e){document.getElementById('loErr').textContent='Email ou password incorretos.';btn.disabled=false;btn.textContent='Entrar';}
+}
+async function afterLogin(){
+ document.getElementById('app').innerHTML='<div class="spinner"></div>';
+ const restaurants=await Noma.getStaffRestaurants(session.user.id);
+ if(!restaurants.length){document.getElementById('app').innerHTML='<div class="login-wrap"><p>Esta conta não tem acesso a nenhum restaurante. Adiciona-a a restaurant_staff no Supabase.</p></div>';return;}
+ RESTAURANT=restaurants[0]; // ajusta aqui se um utilizador gerir mais do que um restaurante
+ await loadAll();
+ subscribeOrders();
+ render();
+}
+async function loadAll(){
+ [ORDERS,PRODUCTS,CATEGORIES,TABLES]=await Promise.all([
+  Noma.getOrders(RESTAURANT.id),Noma.getAllProducts(RESTAURANT.id),Noma.getAllCategories(RESTAURANT.id),Noma.getAllTables(RESTAURANT.id)
+ ]);
+}
+function subscribeOrders(){
+ if(ordersSub)ordersSub.unsubscribe();
+ ordersSub=Noma.subscribeOrders(RESTAURANT.id, async ()=>{ORDERS=await Noma.getOrders(RESTAURANT.id);if(['dashboard','pedidos','detail'].includes(state.screen))render();});
+}
+async function advance(id){try{const o=ORDERS.find(x=>x.id===id);const m=STATUS_META[o.status];if(!m.next)return;
+ await Noma.updateOrderStatus(id,m.next);ORDERS=await Noma.getOrders(RESTAURANT.id);render();toast('Pedido atualizado');}catch(e){toast('Erro ao atualizar pedido');}}
+async function cancelOrder(id){if(!confirm('Cancelar este pedido?'))return;try{await Noma.updateOrderStatus(id,'cancelled');ORDERS=await Noma.getOrders(RESTAURANT.id);go('pedidos');toast('Pedido cancelado');}catch(e){toast('Erro ao cancelar');}}
+
+// ---------- nav / dashboard / pedidos / detail ----------
+function navBar(){
+ const items=[['dashboard','Dashboard'],['pedidos','Pedidos'],['menu','Menu'],['categorias','Categorias'],['mesas','Mesas'],['config','Configurações']];
+ return `<nav class="sidebar"><div class="brand">${RESTAURANT.name}<span>Admin</span></div>
+  ${items.map(([id,label])=>`<button class="navitem ${state.screen===id||(state.screen==='detail'&&id==='pedidos')?'active':''}" onclick="go('${id}')">${label}</button>`).join('')}
+  <button class="navitem" style="margin-left:auto" onclick="Noma.signOut()">Sair</button></nav>`;
+}
+function orderRow(o){const m=STATUS_META[o.status];
+ return `<div class="orow" onclick="go('detail','${o.id}')"><span class="dot" style="background:${m.color}"></span>
+  <div class="meta"><b>Pedido #${o.order_number} · Mesa ${o.tables?o.tables.table_number:'?'}</b><span>${itemsSummary(o)}</span></div><span class="amt">${fmt(orderTotal(o))}</span></div>`;}
+function renderDashboard(){const s=stats();const recent=[...ORDERS].slice(0,5);
+ return `<main><h1 style="margin-bottom:1.1rem">Dashboard</h1>
+  <div class="stats"><div class="stat"><div class="num">${s.total}</div><div class="lbl">Pedidos hoje</div></div>
+  <div class="stat"><div class="num">${s.pend}</div><div class="lbl">Pedidos pendentes</div></div>
+  <div class="stat"><div class="num">${s.done}</div><div class="lbl">Pedidos concluídos</div></div>
+  <div class="stat"><div class="num">${fmt(s.valor)}</div><div class="lbl">Valor vendido hoje</div></div></div>
+  <div class="recent"><h2 style="padding:1rem 1.1rem;border-bottom:1px solid var(--line)">Pedidos recentes</h2>${recent.length?recent.map(orderRow).join(''):'<p style="padding:1.1rem;color:var(--ink-soft);font-size:.85rem">Sem pedidos ainda.</p>'}</div></main>`;}
+function kanbanCard(o){const m=STATUS_META[o.status];
+ return `<div class="ocard"><div class="ocard-top" onclick="go('detail','${o.id}')"><span>#${o.order_number} · Mesa ${o.tables?o.tables.table_number:'?'}</span></div>
+  <div class="ocard-items" onclick="go('detail','${o.id}')">${itemsSummary(o)}</div>
+  <div class="ocard-foot"><span class="ocard-time">${fmtTime(o.created_at)}</span><span class="total">${fmt(orderTotal(o))}</span></div>
+  ${m.next?`<button class="actbtn" onclick="advance('${o.id}')">${m.nextLabel}</button>`:''}
+  <button class="linkbtn" onclick="cancelOrder('${o.id}')">Cancelar pedido</button></div>`;}
+function renderPedidos(){
+ return `<main><h1 style="margin-bottom:1.1rem">Pedidos</h1><div class="board">
+  ${BOARD_COLS.map(c=>{const list=ORDERS.filter(o=>o.status===c);const m=STATUS_META[c];
+   return `<div class="col"><div class="col-head"><span class="dot" style="background:${m.color}"></span><span>${m.label}</span><span class="count">${list.length}</span></div>
+    ${list.length?list.map(kanbanCard).join(''):'<div class="empty-col">Sem pedidos</div>'}</div>`;}).join('')}
+  </div></main>`;}
+function renderDetail(){const o=ORDERS.find(x=>x.id===state.detailId);if(!o)return `<main><p>Pedido não encontrado.</p></main>`;
+ const m=STATUS_META[o.status];
+ return `<main><div class="dhead"><button class="iconbtn" onclick="go('pedidos')">${icon('back')}</button><h1>Pedido #${o.order_number}</h1></div>
+  <div class="dcard"><div class="drow"><span>Mesa</span><span>${o.tables?o.tables.table_number:'?'}</span></div>
+  <div class="drow"><span>Hora</span><span>${fmtTime(o.created_at)}</span></div>
+  <div class="drow"><span>Estado</span><span style="color:${m.color};font-weight:700">${m.label}</span></div>
+  ${(o.order_items||[]).map(it=>`<div class="drow"><span>${it.quantity}× ${it.product_name}${it.notes?`<br><span class="dnote">${it.notes}</span>`:''}</span><span>${fmt(it.unit_price*it.quantity)}</span></div>`).join('')}
+  ${o.customer_notes?`<div class="drow"><span>Observações</span><span style="text-align:right;max-width:60%">${o.customer_notes}</span></div>`:''}
+  <div class="drow" style="font-weight:700"><span>Total</span><span>${fmt(orderTotal(o))}</span></div></div>
+  ${m.next?`<button class="actbtn" style="max-width:520px;margin-top:1rem" onclick="advance('${o.id}')">${m.nextLabel}</button>`:''}</main>`;}
+
+// ---------- produtos ----------
+function productRow(p){const cat=CATEGORIES.find(c=>c.id===p.category_id);
+ return `<div class="prow ${!p.available?'unavail':''}"><div class="swatch"></div>
+  <div class="prow-body"><b>${p.name}</b><span>${cat?cat.name:'Sem categoria'} · ${fmt(p.price)}</span></div>
+  <button class="tglbtn" onclick="toggleAvail('${p.id}')">${p.available?'Disponível':'Indisponível'}</button>
+  <button class="iconbtn" onclick="openProductForm('${p.id}')">✎</button>
+  <button class="iconbtn" onclick="deleteProductUI('${p.id}')">✕</button></div>`;}
+function renderProdutos(){const cats=[...CATEGORIES].sort((a,b)=>a.display_order-b.display_order);let rows='';
+ cats.forEach(c=>{const prods=PRODUCTS.filter(p=>p.category_id===c.id);if(!prods.length)return;rows+=`<div class="group-label">${c.name}</div>`+prods.map(productRow).join('');});
+ const orphan=PRODUCTS.filter(p=>!cats.some(c=>c.id===p.category_id));
+ if(orphan.length)rows+=`<div class="group-label">Sem categoria</div>`+orphan.map(productRow).join('');
+ return `<main><div class="head-row"><h1>Menu</h1><button class="btn btn-primary" onclick="openProductForm()">+ Novo Produto</button></div><div class="panel-list">${rows||'<p style="padding:1.1rem;color:var(--ink-soft);font-size:.85rem">Sem produtos.</p>'}</div></main>`;}
+async function toggleAvail(id){const p=PRODUCTS.find(x=>x.id===id);try{await Noma.updateProduct(id,{available:!p.available});p.available=!p.available;render();}catch(e){toast('Erro ao atualizar');}}
+function openProductForm(id){const p=id?PRODUCTS.find(x=>x.id===id):null;
+ const opts=[...CATEGORIES].sort((a,b)=>a.display_order-b.display_order).map(c=>`<option value="${c.id}" ${p&&p.category_id===c.id?'selected':''}>${c.name}</option>`).join('');
+ openModal(`<h2>${p?'Editar Produto':'Novo Produto'}</h2>
+  <div class="mfield"><label>Nome</label><input id="pfName" value="${p?p.name:''}"></div>
+  <div class="mfield"><label>Descrição</label><textarea id="pfDesc">${p?p.description||'':''}</textarea></div>
+  <div class="mrow"><div class="mfield"><label>Preço (€)</label><input id="pfPrice" type="number" step="0.10" value="${p?p.price:''}"></div>
+  <div class="mfield"><label>Categoria</label><select id="pfCat">${opts}</select></div></div>
+  <div class="mfield"><label>Imagem (URL, opcional)</label><input id="pfPhoto" value="${p&&p.image_url?p.image_url:''}" placeholder="https://..."></div>
+  <label class="mcheck"><input id="pfAvail" type="checkbox" ${!p||p.available?'checked':''}> Disponível no menu</label>
+  <div class="mactions">${p?`<button class="btn btn-secondary" onclick="deleteProductUI('${p.id}')">Eliminar</button>`:'<span></span>'}
+  <button class="btn btn-primary" id="pfSave" onclick="saveProduct('${p?p.id:''}')">Guardar</button></div>`);}
+async function saveProduct(id){const name=val('pfName').trim();const price=parseFloat(val('pfPrice'));const category_id=val('pfCat');
+ if(!name||isNaN(price)||!category_id){toast('Preenche nome, preço e categoria');return;}
+ const btn=document.getElementById('pfSave');btn.disabled=true;btn.textContent='A guardar...';
+ const body={restaurant_id:RESTAURANT.id,category_id,name,price,description:val('pfDesc').trim(),image_url:val('pfPhoto').trim(),available:document.getElementById('pfAvail').checked};
+ try{
+  if(id){await Noma.updateProduct(id,body);Object.assign(PRODUCTS.find(x=>x.id===id),body);}
+  else{const created=await Noma.createProduct(body);PRODUCTS.push(created);}
+  closeModal();render();toast('Produto guardado');
+ }catch(e){toast('Erro ao guardar produto');btn.disabled=false;btn.textContent='Guardar';}}
+async function deleteProductUI(id){if(!confirm('Eliminar este produto?'))return;try{await Noma.deleteProduct(id);PRODUCTS=PRODUCTS.filter(p=>p.id!==id);closeModal();render();toast('Produto eliminado');}catch(e){toast('Erro ao eliminar');}}
+
+// ---------- categorias ----------
+function categoryRow(c,i,total){const count=PRODUCTS.filter(p=>p.category_id===c.id).length;
+ return `<div class="prow"><div class="prow-body"><b>${c.name}</b><span>${count} produto${count===1?'':'s'}${c.active?'':' · inativa'}</span></div>
+  <button class="iconbtn" ${i===0?'disabled':''} onclick="moveCat('${c.id}',-1)">↑</button>
+  <button class="iconbtn" ${i===total-1?'disabled':''} onclick="moveCat('${c.id}',1)">↓</button>
+  <button class="iconbtn" onclick="openCategoryForm('${c.id}')">✎</button>
+  <button class="iconbtn" onclick="deleteCategoryUI('${c.id}')">✕</button></div>`;}
+function renderCategorias(){const cats=[...CATEGORIES].sort((a,b)=>a.display_order-b.display_order);
+ return `<main><div class="head-row"><h1>Categorias</h1><button class="btn btn-primary" onclick="openCategoryForm()">+ Nova Categoria</button></div>
+  <div class="panel-list">${cats.map((c,i)=>categoryRow(c,i,cats.length)).join('')}</div></main>`;}
+async function moveCat(id,dir){const cats=[...CATEGORIES].sort((a,b)=>a.display_order-b.display_order);const idx=cats.findIndex(c=>c.id===id);const j=idx+dir;
+ if(j<0||j>=cats.length)return;const a=cats[idx],b=cats[j];const ta=a.display_order,tb=b.display_order;
+ try{await Noma.updateCategory(a.id,{display_order:tb});await Noma.updateCategory(b.id,{display_order:ta});a.display_order=tb;b.display_order=ta;render();}catch(e){toast('Erro ao reordenar');}}
+function openCategoryForm(id){const c=id?CATEGORIES.find(x=>x.id===id):null;
+ openModal(`<h2>${c?'Editar Categoria':'Nova Categoria'}</h2><div class="mfield"><label>Nome</label><input id="cfName" value="${c?c.name:''}"></div>
+  <label class="mcheck"><input id="cfActive" type="checkbox" ${!c||c.active?'checked':''}> Categoria ativa</label>
+  <div class="mactions">${c?`<button class="btn btn-secondary" onclick="deleteCategoryUI('${c.id}')">Eliminar</button>`:'<span></span>'}
+  <button class="btn btn-primary" onclick="saveCategory('${c?c.id:''}')">Guardar</button></div>`);}
+async function saveCategory(id){const name=val('cfName').trim();if(!name){toast('Indica um nome');return;}
+ const active=document.getElementById('cfActive').checked;
+ try{
+  if(id){await Noma.updateCategory(id,{name,active});Object.assign(CATEGORIES.find(x=>x.id===id),{name,active});}
+  else{const mo=Math.max(0,...CATEGORIES.map(c=>c.display_order));const created=await Noma.createCategory({restaurant_id:RESTAURANT.id,name,active,display_order:mo+1});CATEGORIES.push(created);}
+  closeModal();render();toast('Categoria guardada');
+ }catch(e){toast('Erro ao guardar categoria');}}
+async function deleteCategoryUI(id){if(PRODUCTS.some(p=>p.category_id===id)){toast('Move ou elimina primeiro os produtos desta categoria');return;}
+ if(!confirm('Eliminar esta categoria?'))return;try{await Noma.deleteCategory(id);CATEGORIES=CATEGORIES.filter(c=>c.id!==id);closeModal();render();toast('Categoria eliminada');}catch(e){toast('Erro ao eliminar');}}
+
+// ---------- mesas / QR ----------
+function tableCard(t){return `<div class="tcard"><div class="tnum">Mesa ${t.table_number}</div>
+  <span class="tstatus ${t.active?'':'off'}">${t.active?'Ativa':'Inativa'}</span>
+  <div class="tactions"><button class="actbtn" onclick="showQR(${t.table_number})">Ver QR Code</button>
+  <div class="trow2"><button class="iconbtn" onclick="openTableForm('${t.id}')">✎</button><button class="iconbtn" onclick="deleteTableUI('${t.id}')">✕</button></div></div></div>`;}
+function renderMesas(){const tables=[...TABLES].sort((a,b)=>a.table_number-b.table_number);
+ return `<main><div class="head-row"><h1>Mesas</h1><button class="btn btn-primary" onclick="openTableForm()">+ Nova Mesa</button></div>
+  <div class="tablegrid">${tables.map(tableCard).join('')}</div></main>`;}
+function nextTableNumber(){return TABLES.length?Math.max(...TABLES.map(t=>t.table_number))+1:1;}
+function openTableForm(id){const t=id?TABLES.find(x=>x.id===id):null;
+ openModal(`<h2>${t?'Editar Mesa':'Nova Mesa'}</h2><div class="mfield"><label>Número</label><input id="tfNum" type="number" value="${t?t.table_number:nextTableNumber()}"></div>
+  <label class="mcheck"><input id="tfActive" type="checkbox" ${!t||t.active?'checked':''}> Mesa ativa</label>
+  <div class="mactions">${t?`<button class="btn btn-secondary" onclick="deleteTableUI('${t.id}')">Eliminar</button>`:'<span></span>'}
+  <button class="btn btn-primary" onclick="saveTable('${t?t.id:''}')">Guardar</button></div>`);}
+async function saveTable(id){const table_number=parseInt(val('tfNum'),10);if(!table_number||table_number<1){toast('Indica um número válido');return;}
+ const active=document.getElementById('tfActive').checked;
+ try{
+  if(id){await Noma.updateTable(id,{table_number,active});Object.assign(TABLES.find(x=>x.id===id),{table_number,active});}
+  else{const created=await Noma.createTable({restaurant_id:RESTAURANT.id,table_number,active});TABLES.push(created);}
+  closeModal();render();toast('Mesa guardada');
+ }catch(e){toast('Erro ao guardar (número já existe?)');}}
+async function deleteTableUI(id){if(!confirm('Eliminar esta mesa?'))return;try{await Noma.deleteTable(id);TABLES=TABLES.filter(t=>t.id!==id);closeModal();render();toast('Mesa eliminada');}catch(e){toast('Erro ao eliminar');}}
+function showQR(number){const url=clientUrl()+'?table='+number;
+ openModal(`<h2>QR Code — Mesa ${number}</h2><div id="qrbox" style="display:flex;justify-content:center;padding:1rem 0"></div>
+  <p class="qrlink">${url}</p><div class="mactions"><button class="btn btn-secondary" onclick="closeModal()">Fechar</button>
+  <button class="btn btn-primary" onclick="copyLink('${url}')">Copiar Link</button></div>`);
+ setTimeout(()=>{try{new QRCode(document.getElementById('qrbox'),{text:url,width:160,height:160,colorDark:'#18150F',colorLight:'#ffffff'});}
+  catch(e){document.getElementById('qrbox').innerHTML='<p style="font-size:.8rem;color:var(--ink-soft)">QR indisponível — usa o link acima.</p>';}},10);}
+function copyLink(url){try{navigator.clipboard.writeText(url);toast('Link copiado');}catch(e){toast('Não foi possível copiar');}}
+
+// ---------- configurações ----------
+function renderConfig(){const r=RESTAURANT;
+ return `<main><h1 style="margin-bottom:1.1rem">Configurações</h1><div class="dcard settings-card">
+  <div class="mfield"><label>Nome do restaurante</label><input id="sfName" value="${r.name}"></div>
+  <div class="mfield"><label>Descrição curta</label><textarea id="sfDesc">${r.description||''}</textarea></div>
+  <div class="mfield"><label>Morada</label><input id="sfAddress" value="${r.address||''}"></div>
+  <div class="mfield"><label>Telefone</label><input id="sfPhone" value="${r.phone||''}"></div>
+  <div class="mfield"><label>Horário</label><input id="sfHours" value="${r.opening_hours||''}"></div>
+  <div class="mfield"><label>Logo (URL, opcional)</label><input id="sfLogo" value="${r.logo_url||''}"></div>
+  <div class="mrow"><div class="mfield"><label>Cor principal</label><input id="sfAccent" type="color" value="${r.primary_color||'#9C7A3C'}"></div>
+  <div class="mfield"><label>Cor secundária</label><input id="sfInk" type="color" value="${r.secondary_color||'#18150F'}"></div></div>
+  <button class="btn btn-primary" id="sfSave" onclick="saveSettings()">Guardar Configurações</button></div></main>`;}
+async function saveSettings(){const btn=document.getElementById('sfSave');btn.disabled=true;btn.textContent='A guardar...';
+ const body={name:val('sfName'),description:val('sfDesc'),address:val('sfAddress'),phone:val('sfPhone'),opening_hours:val('sfHours'),logo_url:val('sfLogo'),primary_color:val('sfAccent'),secondary_color:val('sfInk')};
+ try{await Noma.updateRestaurant(RESTAURANT.id,body);Object.assign(RESTAURANT,body);render();toast('Configurações guardadas — o Cliente já reflete as alterações');}
+ catch(e){toast('Erro ao guardar');btn.disabled=false;btn.textContent='Guardar Configurações';}}
+
+function render(){const app=document.getElementById('app');let content;
+ if(state.screen==='dashboard')content=renderDashboard();
+ else if(state.screen==='pedidos')content=renderPedidos();
+ else if(state.screen==='detail')content=renderDetail();
+ else if(state.screen==='menu')content=renderProdutos();
+ else if(state.screen==='categorias')content=renderCategorias();
+ else if(state.screen==='mesas')content=renderMesas();
+ else content=renderConfig();
+ app.innerHTML=navBar()+content;}
+boot();
+</script>
+</body>
+</html>
